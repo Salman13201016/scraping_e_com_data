@@ -55,6 +55,8 @@ import time
 
 driver = webdriver.Chrome(ChromeDriverManager().install())
 
+print("line added")
+
 driver.get("https://www.daraz.com.bd/groceries-laundry-household-laundry-washing-liquid/")
 
 time.sleep(10)
