@@ -8,8 +8,21 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
+from selenium.webdriver.common.action_chains import ActionChains
 
+# Set the path for the ChromeDriver
+chrome_driver_path = r'H:\\STUDY\\Python Projects VSML\\webdriver\\chromedriver.exe'
+
+# Chrome options to run the browser in headless mode
+chrome_options = webdriver.ChromeOptions()
+chrome_options.add_argument("--headless")
+
+# Create a Service object for the ChromeDriver
+service = Service(chrome_driver_path)
+
+# Create the WebDriver with the Service and ChromeOptions
+driver = webdriver.Chrome(service=service, options=chrome_options)
 chrome_driver_path = r'H:\\STUDY\\Python Projects VSML\\webdriver\\chromedriver.exe'
 
 
@@ -20,14 +33,6 @@ chrome_options = webdriver.ChromeOptions()
 # Create a Service object for the ChromeDriver
 service = Service(chrome_driver_path)
 
-# Start the service
-
-# Create the WebDriver with the Service and ChromeOptions
-driver = webdriver.Chrome(service=service, options=chrome_options)
-
-
-# Create the WebDriver with the Service and ChromeOptions
-driver = webdriver.Chrome(service=service, options=chrome_options)
 
 url = "https://www.daraz.com.bd/"
 driver.get(url)
@@ -58,45 +63,139 @@ with open(csv_file, "w", newline="") as file:
 # Function to collect product links from a single page
 # ... (previous code)
 
-def scrape_all_product_links(subcategory_link):
+# Function to collect product links from a single page
+def collect_product_links():
+    max_retries = 3  # Maximum number of retries before giving up
+    retries = 0
+
+    while retries < max_retries:
+        try:
+            grid_items = WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.CLASS_NAME, "gridItem--Yd0sa")))
+            product_links = [item.find_element(By.CSS_SELECTOR, "a").get_attribute("href") for item in grid_items]
+            return product_links
+        except StaleElementReferenceException:
+            # If a StaleElementReferenceException occurs, wait for a moment and try again
+            retries += 1
+            time.sleep(1)
+            print(f"Retry attempt {retries} for collecting product links.")
+    
+    # If all retries failed, raise an exception
+    raise Exception("Failed to collect product links after multiple retries.")
+
+
+# Function to scroll down to the bottom of the page
+# ... (Previous code)
+
+# Function to scroll to the bottom of the page
+def scroll_to_bottom():
+    last_height = driver.execute_script("return document.body.scrollHeight")
+    while True:
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(3)  # Adjust the wait time as needed
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
+            break
+        last_height = new_height
+
+# Function to collect all product links from a subcategory page
+def collect_all_product_links(subcategory_link, total_pages=102):
     driver.get(subcategory_link)
     time.sleep(3)
 
     all_product_links = []
     page_number = 1
-    while True:
+
+    while page_number <= total_pages:
+        try:
+            print(f"Scraping page {page_number} from {subcategory_name}")
+            product_links = collect_product_links()
+            print(f"Found {len(product_links)} product links on this page")
+            all_product_links.extend(product_links)
+
+            # Scroll to the bottom of the page to load more products
+            scroll_to_bottom()
+
+            # Click the "Next" button using JavaScript click
+            next_button = driver.find_element(By.XPATH, f"//a[text()='{page_number + 1}']")
+            driver.execute_script("arguments[0].click();", next_button)
+
+            # Wait for the next page to load (you can increase this time if needed)
+            time.sleep(3)
+            page_number += 1
+        except (TimeoutException, NoSuchElementException):
+            # No "Next" button found or reached the desired total_pages, exit the loop
+            break
+
+    return all_product_links
+
+# ... (Remaining code)
+
+    driver.get(subcategory_link)
+    time.sleep(3)
+
+    all_product_links = []
+    page_number = 1
+
+    while page_number <= total_pages:
         try:
             print(f"Scraping page {page_number}")
             product_links = collect_product_links()
             print(f"Found {len(product_links)} product links on this page")
             all_product_links.extend(product_links)
 
-            # Check for the presence of the "Next" button and click it
-            next_button = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.LINK_TEXT, "Next")))
-            next_button.click()
+            # Click the "Next" button using JavaScript click
+            next_button = driver.find_element(By.XPATH, f"//a[text()='{page_number + 1}']")
+            driver.execute_script("arguments[0].click();", next_button)
 
             # Wait for the next page to load (you can increase this time if needed)
             time.sleep(3)
             page_number += 1
-        except TimeoutException:
-            # No "Next" button found, exit the loop
+        except (TimeoutException, NoSuchElementException):
+            # No "Next" button found or reached the desired total_pages, exit the loop
             break
 
     return all_product_links
 
-def collect_product_links():
-    # Wait for the grid items to be present (increase the wait time if needed)
-    grid_items = WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.CLASS_NAME, "gridItem--Yd0sa")))
+    driver.get(subcategory_link)
+    time.sleep(3)
 
-    # Collect the product links from each grid item
-    product_links = [item.find_element(By.CSS_SELECTOR, "a").get_attribute("href") for item in grid_items]
-    return product_links
+    all_product_links = []
+    page_number = 1
 
+    while page_number <= total_pages:
+        try:
+            print(f"Scraping page {page_number}")
+            product_links = collect_product_links()
+            print(f"Found {len(product_links)} product links on this page")
+            all_product_links.extend(product_links)
+
+            # Click the "Next" button using JavaScript click
+            next_button = driver.find_element(By.XPATH, f"//a[text()='{page_number + 1}']")
+            driver.execute_script("arguments[0].click();", next_button)
+
+            # Wait for the next page to load (you can increase this time if needed)
+            time.sleep(3)
+            page_number += 1
+        except (TimeoutException, NoSuchElementException):
+            # No "Next" button found or reached the desired total_pages, exit the loop
+            break
+
+    return all_product_links
+
+# Read subcategory data from CSV
+csv_file = "subcategory_links.csv"
+subcategory_data = []
+with open(csv_file, newline="") as file:
+    reader = csv.reader(file)
+    next(reader)  # Skip the header row
+    for row in reader:
+        subcategory_name, subcategory_link = row
+        subcategory_data.append((subcategory_name, subcategory_link))
 
 # Collect all product links from all subcategory pages and store them in separate CSV files
-for i, (subcategory_name, subcategory_link) in enumerate(subcategory_data):
+for subcategory_name, subcategory_link in subcategory_data:
     # Collect product links for each subcategory
-    all_product_links = scrape_all_product_links(subcategory_link)
+    all_product_links = collect_all_product_links(subcategory_link)
 
     # Store all the product links in a separate CSV file with the subcategory name
     product_links_csv = f"{subcategory_name}_product_links.csv"
