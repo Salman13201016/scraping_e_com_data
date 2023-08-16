@@ -1,64 +1,96 @@
+import csv
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 from selenium.webdriver.support import expected_conditions as EC
-import csv
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
+from selenium.webdriver.common.action_chains import ActionChains
+import re
 
+def sanitize_filename(filename):
+    sanitized_name = re.sub(r'[^\w\s-]', '', filename).strip()
+    sanitized_name = re.sub(r'[-\s]+', '_', sanitized_name)
+    return sanitized_name
+
+# Set the path for the ChromeDriver
 chrome_driver_path = r'H:\\STUDY\\Python Projects VSML\\webdriver\\chromedriver.exe'
 
+# Chrome options to run the browser in headless mode
 chrome_options = webdriver.ChromeOptions()
 # chrome_options.add_argument("--headless")
 
+# Create a Service object for the ChromeDriver
 service = Service(chrome_driver_path)
 
+# Create the WebDriver with the Service and ChromeOptions
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
-product_url = "https://www.daraz.com.bd/products/pc-baseus-usb-50-i312318610-s1407208392.html?spm=a2a0e.searchlist.list.1.7330174fbOQAdj&search=1"
-driver.get(product_url)
+driver.maximize_window()
 
-# Scroll down to the review section
-review_section = driver.find_element(By.XPATH, '//*[@id="module_product_qna"]')
-driver.execute_script("arguments[0].scrollIntoView();", review_section)
+def write_to_csv(file_name, data):
+    with open(file_name, 'w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Title', 'Link', 'Price', 'Discount Price', 'Rating', 'Description', 'Comments'])
+        writer.writerows(data)
 
-# Wait for a moment to ensure the content is loaded
-driver.implicitly_wait(5)
+# Step 1: Read the saved links CSV file and scrape product details
+with open("Audio_product_links.csv", 'r') as file:
+    csvreader = csv.reader(file)
+    next(csvreader)  # Skip the header row
+    for row in csvreader:
+        url = row[0]
+        driver.get(url)
 
-# Selector for the review elements
-review_selector = '//*[@id="module_product_qna"]/div/div[2]/div[2]/ul/li/div[1]/div[1]'
+        # Wait for the page to load (you may need to adjust the waiting time)
+        time.sleep(5)
 
-# Collect and store the reviews
-reviews = []
+        # Scrape product details using specific selectors for each detail
+        try:
+            title = driver.find_element(By.CSS_SELECTOR,'#module_product_title_1 > div > div > span').text
+        except NoSuchElementException:
+            title = 'Title not found'
 
-while True:
-    try:
-        review_elements = driver.find_elements(By.XPATH, review_selector)
-        for review_element in review_elements:
-            review_text = review_element.text
-            reviews.append(review_text)
-        
-        next_button = driver.find_element(By.XPATH, '//*[@id="module_product_qna"]/div/div[2]/div[2]/div[2]/div/button[2]')
-        driver.execute_script("arguments[0].scrollIntoView();", next_button)
-        driver.execute_script("window.scrollBy(0, -100);")  # Scroll a bit more to avoid overlapping elements
-        next_button.click()
-        time.sleep(2)  # Adjust this wait time as needed
-        
-        # last_page_class = '//*[@id="module_product_qna"]/div/div[2]/div[2]/ul'
-        # last_page_button = driver.find_element(By.XPATH, f'//*[@class="{last_page_class}"]')
-        # if "next-disabled" in last_page_button.get_attribute("class"):
-        #     break
-    except NoSuchElementException:
-        break
+        try:
+            price = driver.find_element(By.CSS_SELECTOR,'#module_product_price_1 > div > div > div > span.pdp-price.pdp-price_type_deleted.pdp-price_color_lightgray.pdp-price_size_xs').text
+        except NoSuchElementException:
+            price = 'Price not found'
 
-# Store the collected reviews in a CSV file
-csv_file = 'product_reviews.csv'
-with open(csv_file, 'w', newline='', encoding='utf-8') as file:
-    writer = csv.writer(file)
-    writer.writerow(['Review'])
-    writer.writerows([[review] for review in reviews])
+        try:
+            discount_price = driver.find_element(By.CSS_SELECTOR,'#module_product_price_1 > div > div > span').text
+        except NoSuchElementException:
+            discount_price = 'Discount Price not found'
 
-# Close the WebDriver
+        try:
+            rating = driver.find_element(By.CSS_SELECTOR,'#module_product_review_star_1 > div > div').text
+        except NoSuchElementException:
+            rating = 'Rating not found'
+
+        try:
+            description = driver.find_element(By.CSS_SELECTOR,'#module_product_detail').text
+        except NoSuchElementException:
+            description = 'Description not found'
+
+        # Scrape comments using the provided selectors
+        comments = []
+        try:
+            comment_elements = driver.find_elements(By.XPATH, '//*[@id="module_product_review"]/div/div/div[3]/div[1]/div[1]/div[3]/div[1]')
+            for comment_element in comment_elements:
+                comments.append(comment_element.text)
+        except NoSuchElementException:
+            comments.append('Comment not found')
+
+        # Prepare the data to be written to the CSV
+        product_data = [[title, url, price, discount_price, rating, description, '\n'.join(comments)]]
+
+        # Generate the CSV file name based on the product title
+        csv_file_name = f"{sanitize_filename(title)}.csv"
+
+        # Write the data to the CSV file
+        write_to_csv(csv_file_name, product_data)
+
 driver.quit()
+
