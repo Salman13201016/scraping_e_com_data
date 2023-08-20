@@ -1,6 +1,6 @@
 import os
 import time
-import csv
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
@@ -12,22 +12,27 @@ import csv
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from webdriver_manager.firefox import GeckoDriverManager
 
-service = Service(ChromeDriverManager().install())
 
-# Set Chrome options (if needed)
-chrome_options = webdriver.ChromeOptions()
-# Add any desired options to the chrome_options object
+firefox_options = webdriver.FirefoxOptions()
+firefox_options.add_argument("--headless")  # Run Firefox in headless mode
 
-# Create the WebDriver instance
-driver = webdriver.Chrome(service=service, options=chrome_options)
+# Initialize the Firefox driver with options and executable path
 
-url = "https://www.facebook.com/ostadapp?mibextid=ZbWKwL"
+service = FirefoxService(executable_path='C:\\Users\\nirba\\OneDrive\\Desktop\\scrapping_facebook_data\\geckodriver.exe')
+
+
+driver = webdriver.Firefox(service=service)
+
+
+url = "https://www.facebook.com/ostadapp"
 driver.get(url)
 time.sleep(15)
 # exit_login = driver.find_element(By.XPATH, '//*[@id="mount_0_0_Yg"]/div/div[1]/div/div[5]/div/div/div[1]/div/div[2]/div/div/div/div[1]/div').click()
 email_input = WebDriverWait(driver, 10).until(
-    EC.element_to_be_clickable((By.XPATH, '//*[@id="login_form"]/div[2]/div[1]/label/input'))
+    EC.element_to_be_clickable((By.NAME, 'email'))
 )
 time.sleep(15)
 # Once the element is clickable, you can interact with it
@@ -38,12 +43,12 @@ email_input.send_keys('nirbanmitra007@gmail.com')
 # email_input.send_keys('nirbanmitra007@gmail.com')
 time.sleep(5)
 # login_email = driver.find_element(By.XPATH, '//*[@id="login_form"]/div[2]/div[1]/label/input').send_keys('nirbanmitra007@gmail.com')
-login_password = driver.find_element(By.CSS_SELECTOR, '#login_form > div.x9f619.x1n2onr6.x1ja2u2z.x2lah0s.x13a6bvl.x6s0dn4.xozqiw3.x1q0g3np.x1pi30zi.x1swvt13.xexx8yu.xcud41i.x139jcc6.x4cne27.xifccgj.x1s85apg.x3holdf > div:nth-child(2) > label > input').send_keys('Nirban@007')
+login_password = driver.find_element(By.NAME, 'pass').send_keys('Nirban@007')
 time.sleep(5)
 login_button = WebDriverWait(driver, 15).until(
-    EC.element_to_be_clickable((By.XPATH, '//*[@id="login_form"]/div[2]/div[3]/div/div/div[1]'))
+    EC.element_to_be_clickable((By.CSS_SELECTOR, 'div.xhk9q7s > div:nth-child(1) > div:nth-child(1) > span:nth-child(1)'))
 )
-
+time.sleep(20)
 # Click the login button
 login_button.click()
 
@@ -71,18 +76,18 @@ time.sleep(10)
     
 # )
 
-WebDriverWait(driver, 60).until(
-    EC.presence_of_element_located((By.XPATH, '//*[@id="element_that_indicates_page_has_loaded"]'))
-)
+# WebDriverWait(driver, 60).until(
+#     EC.presence_of_element_located((By.XPATH, '//*[@id="element_that_indicates_page_has_loaded"]'))
+# )
 
-# Now, proceed to click the review page link
-review_page_link = WebDriverWait(driver, 60).until(
-    EC.presence_of_element_located((By.XPATH, '//*[@id="mount_0_0_/j"]/div/div[1]/div/div[3]/div/div/div/div[1]/div[1]/div/div/div[3]/div/div/div/div[1]/div/div/div[1]/div/div/div/div/div/div/a[4]/div'))
-)
-review_page_link.click()
+# # Now, proceed to click the review page link
+# review_page_link = WebDriverWait(driver, 60).until(
+#     EC.presence_of_element_located((By.XPATH, '//*[@id="mount_0_0_/j"]/div/div[1]/div/div[3]/div/div/div/div[1]/div[1]/div/div/div[3]/div/div/div/div[1]/div/div/div[1]/div/div/div/div/div/div/a[4]/div'))
+# )
+# review_page_link.click()
 
-# review_page = driver.find_element(By.XPATH, '//*[@id="mount_0_0_/j"]/div/div[1]/div/div[3]/div/div/div/div[1]/div[1]/div/div/div[3]/div/div/div/div[1]/div/div/div[1]/div/div/div/div/div/div/a[4]/div/span')
-# review_page.click()
+review_page = driver.find_element(By.CSS_SELECTOR, 'a.x1i10hfl:nth-child(5) > div:nth-child(1) > span:nth-child(1)')
+review_page.click()
 time.sleep(10)
 scroll_pause_time = 2
 scroll_height = driver.execute_script("return document.body.scrollHeight")
@@ -103,7 +108,7 @@ reviews = []
 while True:
     try:
         # Find all review elements on the current page
-        review_elements = driver.find_elements(By.XPATH, '//*[@id="mount_0_0_/j"]/div/div[1]/div/div[3]/div/div/div/div[1]/div[1]/div/div/div[4]/div/div/div/div[2]/div/div/div/div/div/div/div/div/div/div[8]/div/div/div[3]/div')
+        review_elements = driver.find_elements(By.CSS_SELECTOR, '#\:R1alal9l9aqqd9emhpapd5aqH2\: > div:nth-child(1) > div:nth-child(1)')
 
         # Collect review text
         for review_element in review_elements:
