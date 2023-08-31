@@ -95,35 +95,36 @@ with open("Audio_product_links.csv", 'r') as file:
 
         # Scroll down to the review section using JavaScript
         
-        driver.execute_script("arguments[0].scrollIntoView();", driver.find_element(By.XPATH, '//*[@id="module_product_review"]'))
+        try:
+            driver.execute_script("arguments[0].scrollIntoView();", driver.find_element(By.XPATH, '//*[@id="module_product_review"]'))
 
-        # Locate the element you want to scroll into view
-        review_section = driver.find_element(By.XPATH, '//*[@id="module_product_review"]')
+            # Locate the element you want to scroll into view
+            review_section = driver.find_element(By.XPATH, '//*[@id="module_product_review"]')
 
-        # Get the current scroll position
-        current_scroll_position = driver.execute_script("return window.pageYOffset;")
+            # Get the current scroll position
+            current_scroll_position = driver.execute_script("return window.pageYOffset;")
 
-        # Get the target scroll position (element's top position)
-        target_scroll_position = review_section.location["y"]
+            # Get the target scroll position (element's top position)
+            target_scroll_position = review_section.location["y"]
 
-        # Calculate the number of pixels to scroll in each step
-        scroll_step = 10  # You can adjust this value to control the scrolling speed
+            # Calculate the number of pixels to scroll in each step
+            scroll_step = 10  # You can adjust this value to control the scrolling speed
 
-        # Scroll towards the target position
-        while current_scroll_position < target_scroll_position:
-            # Calculate the new scroll position
-            new_scroll_position = min(current_scroll_position + scroll_step, target_scroll_position)
+            # Scroll towards the target position
+            while current_scroll_position < target_scroll_position:
+                # Calculate the new scroll position
+                new_scroll_position = min(current_scroll_position + scroll_step, target_scroll_position)
 
-            # Scroll to the new position using JavaScript
-            driver.execute_script(f"window.scrollTo(0, {new_scroll_position});")
+                # Scroll to the new position using JavaScript
+                driver.execute_script(f"window.scrollTo(0, {new_scroll_position});")
 
-            # Update the current scroll position
-            current_scroll_position = new_scroll_position
+                # Update the current scroll position
+                current_scroll_position = new_scroll_position
 
-            # Add a short delay to control the scroll speed
-            time.sleep(0.1)  # Adjust this value as needed
-
-        # Scrape comments from all pages
+                # Add a short delay to control the scroll speed
+                time.sleep(0.1)  # Adjust this value as needed
+        except NoSuchElementException:
+            logger.warning("Review section not found on this page. Skipping reviews.")
         if has_reviews(driver):
             try:
                 comments = []  # Initialize an empty list for comments
@@ -148,7 +149,7 @@ with open("Audio_product_links.csv", 'r') as file:
 
                         # Click the next page button
                         if is_next_button_disabled(driver):
-                            next_page_button = WebDriverWait(driver, 50).until(
+                            next_page_button = WebDriverWait(driver, 20).until(
                                 EC.element_to_be_clickable((By.XPATH, '//*[@id="module_product_review"]/div/div/div[3]/div[2]/div/button[2]')))
                             if next_page_button.is_enabled():
                                 try:
