@@ -9,12 +9,68 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException,ElementClickInterceptedException
 from selenium.webdriver.common.action_chains import ActionChains
-import re, logging
+import re, logging, uuid, os
 
 def sanitize_filename(filename):
     sanitized_name = re.sub(r'[^\w\s-]', '', filename).strip()
-    sanitized_name = re.sub(r'[-\s]+', '_', sanitized_name)
+    sanitized_name = re.sub(r'[-\s]+', '', sanitized_name)
     return sanitized_name
+
+MAX_FILENAME_LENGTH = 500
+output_directory = r'C:\\Users\\nirba\\OneDrive\\Desktop\\scraping_ecom_product_details'
+
+
+def generate_unique_filename(title):
+    # Maximum allowed length for a filename (adjust as needed)
+    max_filename_length = 50
+    
+    # Sanitize and abbreviate the title (limit to max_filename_length characters)
+    sanitized_title = sanitize_filename(title)[:max_filename_length]
+    
+    # Append a timestamp to make the filename unique
+    timestamp = time.strftime("%Y%m%d%H%M%S")
+    csv_file_name = f"{sanitized_title}_{timestamp}.csv"
+    
+    # Generate the full file path by joining it with the output directory
+    csv_file_path = os.path.join(output_directory, csv_file_name)
+    
+    # Check if the file already exists, and if so, add a numeric suffix
+    count = 1
+    while os.path.exists(csv_file_path):
+        # If the filename is still too long, add a unique identifier
+        if max_filename_length - len(timestamp) < 3:
+            unique_id = str(uuid.uuid4())[:8]
+            csv_file_name = f"{sanitized_title[:10]}_{unique_id}_{timestamp}.csv"
+        else:
+            csv_file_name = f"{sanitized_title[:max_filename_length - len(timestamp) - 1]}_{timestamp}.csv"
+        
+        csv_file_path = os.path.join(output_directory, csv_file_name)
+        count += 1
+    
+    return csv_file_name
+
+    # Sanitize and abbreviate the title (limit to 100 characters)
+    sanitized_title = sanitize_filename(title)[:500]
+    print(f"Sanitized Title: {sanitized_title}")  # Debug print
+    
+    # Append a timestamp to make the filename unique
+    timestamp = time.strftime("%Y%m%d%H%M%S")
+    csv_file_name = f"{sanitized_title}_{timestamp}.csv"
+    print(f"CSV Filename: {csv_file_name}")  # Debug print
+    
+    # Generate the full file path by joining it with the output directory
+    csv_file_path = os.path.join(output_directory, csv_file_name)
+    
+    # Check if the file already exists, and if so, add a numeric suffix
+    count = 1
+    while os.path.exists(csv_file_path):
+        csv_file_name = f"{sanitized_title}_{timestamp}_{count}.csv"
+        csv_file_path = os.path.join(output_directory, csv_file_name)
+        count += 1
+    
+    return csv_file_name
+
+
 
 def has_reviews(driver):
     try:
@@ -23,11 +79,16 @@ def has_reviews(driver):
     except NoSuchElementException:
         return False
 
+output_directory = r'C:\\Users\\nirba\\OneDrive\\Desktop\\scraping_ecom_product_details'
+
+if not os.path.exists(output_directory):
+    os.makedirs(output_directory, exist_ok=True)
+
 # Configure logging
 logging.basicConfig(filename='scraper.log', level=logging.INFO, format='%(asctime)s - %(levelname)s: %(message)s')
 logger = logging.getLogger()
 
-chrome_driver_path = r'C:\\Users\\nirba\\OneDrive\\Desktop\\Web Scrapping\\scrapping_product_details_from_daraz\\chromedriver-win64\\chromedriver.exe'
+chrome_driver_path = r'C:\\Users\\nirba\\OneDrive\\Desktop\\scraping_ecom_product_details\\chromedriver.exe'
 
 # Chrome options to run the browser in headless mode
 chrome_options = webdriver.ChromeOptions()
@@ -41,6 +102,21 @@ service = Service(chrome_driver_path)
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
 driver.maximize_window()
+
+def load_url_with_retry(driver, url, max_retries=3):
+    retry_count = 0
+    while retry_count < max_retries:
+        try:
+            driver.get(url)
+            return  # If successful, exit the loop
+        except TimeoutException:
+            # Handle the timeout (e.g., log an error message)
+            logger.warning(f"Timeout loading URL: {url}. Retrying ({retry_count + 1}/{max_retries})...")
+            retry_count += 1
+
+    # Handle the case where all retries failed
+    logger.error(f"All retries failed for URL: {url}")
+    # You can raise an exception or handle it as needed
 
 def write_to_csv(file_name, data):
     with open(file_name, 'w', newline='', encoding='utf-8') as file:
@@ -56,12 +132,12 @@ def is_next_button_disabled(driver):
         return False
 
 # Step 1: Read the saved links CSV file and scrape product details
-with open("Audio_product_links.csv", 'r') as file:
+with open("Computer Accessories_product_links.csv", 'r') as file:
     csvreader = csv.reader(file)
     next(csvreader)  # Skip the header row
     for row in csvreader:
         url = row[0]
-        driver.get(url)
+        load_url_with_retry(driver, url)  # Retry loading the URL if a timeout occurs
         logger.info(f'Scraping data from URL: {url}')
 
         # Wait for the page to load (you may need to adjust the waiting time)
@@ -130,8 +206,9 @@ with open("Audio_product_links.csv", 'r') as file:
                 comments = []  # Initialize an empty list for comments
                 while True:
                     try:
-                        for i in range(1, 6):  # Loop from 1 to 5 to scrape all 5 reviews
-                            comment_element_xpath = '//*[@id="module_product_review"]/div/div/div[3]/div[1]/div[' + str(i) + ']/div[3]/div[1]'
+                        review_elements = driver.find_elements(By.XPATH, '//*[@id="module_product_review"]/div/div/div[3]/div[1]/div')
+                        for i in range(1, len(review_elements) + 1): # Loop from 1 to 5 to scrape all 5 reviews
+                            comment_element_xpath = f'//*[@id="module_product_review"]/div/div/div[3]/div[1]/div[{i}]/div[3]/div[1]'
                             try:
                                 comment_element = driver.find_element(By.XPATH, comment_element_xpath)
                                 comments.append(comment_element.text)
@@ -149,7 +226,7 @@ with open("Audio_product_links.csv", 'r') as file:
 
                         # Click the next page button
                         if is_next_button_disabled(driver):
-                            next_page_button = WebDriverWait(driver, 20).until(
+                            next_page_button = WebDriverWait(driver, 50).until(
                                 EC.element_to_be_clickable((By.XPATH, '//*[@id="module_product_review"]/div/div/div[3]/div[2]/div/button[2]')))
                             if next_page_button.is_enabled():
                                 try:
@@ -176,6 +253,10 @@ with open("Audio_product_links.csv", 'r') as file:
 
         # Generate the CSV file name based on the product title
         csv_file_name = f"{sanitize_filename(title)}.csv"
+
+        # Write the data to the CSV file
+        write_to_csv(csv_file_name, product_data)
+        csv_file_path = os.path.join(output_directory, csv_file_name)
 
         # Write the data to the CSV file
         write_to_csv(csv_file_name, product_data)
