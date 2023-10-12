@@ -16,8 +16,7 @@ def sanitize_filename(filename):
     sanitized_name = re.sub(r'[-\s]+', '', sanitized_name)
     return sanitized_name
 
-MAX_FILENAME_LENGTH = 500
-output_directory = r'C:\\Users\\nirba\\OneDrive\\Desktop\\scraping_ecom_product_details'
+output_directory = r'C:\\Users\\nirba\\OneDrive\\Desktop\\Web Scrapping\\scrapping_product_details_from_daraz'
 
 
 def generate_unique_filename(title):
@@ -79,7 +78,7 @@ def has_reviews(driver):
     except NoSuchElementException:
         return False
 
-output_directory = r'C:\\Users\\nirba\\OneDrive\\Desktop\\scraping_ecom_product_details'
+output_directory = r'C:\\Users\\nirba\\OneDrive\\Desktop\\URLs\\Automotive _ Motorbike\\Car_Exterior_Accessories_Details'
 
 if not os.path.exists(output_directory):
     os.makedirs(output_directory, exist_ok=True)
@@ -88,7 +87,7 @@ if not os.path.exists(output_directory):
 logging.basicConfig(filename='scraper.log', level=logging.INFO, format='%(asctime)s - %(levelname)s: %(message)s')
 logger = logging.getLogger()
 
-chrome_driver_path = r'C:\\Users\\nirba\\OneDrive\\Desktop\\scraping_ecom_product_details\\chromedriver.exe'
+chrome_driver_path = r'C:\\Users\\nirba\\OneDrive\\Desktop\\Web Scrapping\\scrapping_product_details_from_daraz\\chromedriver-win64\\chromedriver.exe'
 
 # Chrome options to run the browser in headless mode
 chrome_options = webdriver.ChromeOptions()
@@ -132,7 +131,7 @@ def is_next_button_disabled(driver):
         return False
 
 # Step 1: Read the saved links CSV file and scrape product details
-with open("Computer Accessories_product_links.csv", 'r') as file:
+with open("Car_Exterior_Accessories_product_links.csv", 'r') as file:
     csvreader = csv.reader(file)
     next(csvreader)  # Skip the header row
     for row in csvreader:
@@ -214,7 +213,7 @@ with open("Computer Accessories_product_links.csv", 'r') as file:
                                 comments.append(comment_element.text)
                             except StaleElementReferenceException:
                                 # Handle stale element reference by re-locating the element
-                                comment_element = WebDriverWait(driver, 10).until(
+                                comment_element = WebDriverWait(driver, 20).until(
                                     EC.presence_of_element_located((By.XPATH, comment_element_xpath)))
                                 comments.append(comment_element.text)
 
@@ -231,7 +230,7 @@ with open("Computer Accessories_product_links.csv", 'r') as file:
                             if next_page_button.is_enabled():
                                 try:
                                     next_page_button.click()
-                                    time.sleep(5)
+                                    time.sleep(15)
                                 except ElementClickInterceptedException:
                                     break
                             else:
